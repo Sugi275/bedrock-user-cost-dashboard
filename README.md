@@ -18,38 +18,73 @@ scripts/
   make-cfn-template.py       Quick のエクスポート結果を配布用テンプレートに整える
 ```
 
-## 前提
+## セットアップ手順
 
-- CUR 2.0 の export を作成済み (Include resource IDs と Include caller identity (IAM principal) allocation data を ON)
-- Athena で `athena/` の SQL を実行し、`cur.cur2` テーブルを作成済み
-- Amazon Quick (Enterprise) を作成済みで、次を設定済み
-  - SPICE 容量 (1 GB 程度)
-  - AWS リソースの権限で Athena と、CUR のバケット・Athena 結果バケットへのアクセスを許可 (結果バケットは Athena Workgroup の書き込み許可も ON)
+### 1. CUR 2.0 の export を作る (Billing and Cost Management コンソール)
 
-## デプロイ
+1. Data Exports → Create export → Standard data export → **CUR 2.0** を選ぶ
+2. Additional export content で次の 2 つを **ON** にする
+   - Include resource IDs
+   - Include caller identity (IAM principal) allocation data
+3. Report data integration で **Amazon Athena** を選ぶ (Parquet で配信される)
+
+作成した時点以降の利用分しか入らない。初回の配信までは最大 24 時間かかる。
+
+### 2. Athena のテーブルを作る
+
+- **データベース名 `cur`、テーブル名 `cur2` は変えない。** データセットの SQL (`quick/dataset.sql`) が `cur.cur2` を前提にしている
+- テーブルは **Quick を使うリージョン (= スタックをデプロイするリージョン) の Athena** で作る。CUR のバケットが us-east-1 にあっても、Athena は別リージョンでよい
+- クエリエディタの Data source は **`AwsDataCatalog`** を選ぶ (S3 Tables のカタログでは外部テーブルを作れない)
+- 使うワークグループに、クエリ結果の保存先 S3 を設定しておく
+
+1. `athena/01-create-database.sql` を実行する
+2. `athena/02-create-table.sql` の `<bucket>` / `<prefix>` / `<export-name>` を自分の export の値に置き換えて実行する
+3. 動作確認として `athena/queries/user-cost-this-month.sql` を実行する
+
+### 3. Amazon Quick を準備する
+
+1. Amazon Quick (Enterprise) のアカウントを用意する
+2. デプロイするリージョンで **SPICE 容量を購入**する (1 GB 程度)。容量が 0 だとデータセットの作成に失敗する
+3. アカウントを管理 → AWS リソース で次を許可する
+   - Amazon Athena
+   - Amazon S3: CUR のバケット、Athena の結果バケット (結果バケットは **Athena Workgroup の書き込み許可も ON**)
+4. 所有者にする Quick ユーザーの ARN を調べる。`--region` には Quick の ID リージョンを指定する
+
+   ```sh
+   aws quicksight list-users --aws-account-id <アカウント ID> --namespace default \
+     --region <ID リージョン> --query 'UserList[].[UserName,Arn]' --output text
+   ```
+
+### 4. CloudFormation でデプロイする
 
 ```sh
 aws cloudformation deploy \
-  --region ap-northeast-1 \
+  --region <Quick と Athena のリージョン> \
   --stack-name bedrock-cur2-dashboard \
   --template-file cloudformation/quick-dashboard.json \
   --parameter-overrides \
-    QuickUserArn=arn:aws:quicksight:ap-northeast-1:111122223333:user/default/<Quick ユーザー名> \
-    IdentityRegion=ap-northeast-1 \
-    DataSourceWorkGroup=primary
+    QuickUserArn=<手順 3 で調べた ARN> \
+    IdentityRegion=<Quick の ID リージョン> \
+    DataSourceWorkGroup=<手順 2 のワークグループ>
 ```
 
-| パラメータ | 説明 | 既定値 |
-|---|---|---|
-| `QuickUserArn` | ダッシュボード等の所有者にする Quick ユーザーの ARN | なし (必須) |
-| `IdentityRegion` | Quick の ID リージョン | `ap-northeast-1` |
-| `DataSourceWorkGroup` | クエリ結果の保存先を設定済みの Athena ワークグループ | `primary` |
-| `ResourceIdPrefixForAllResources` | リソース ID の接頭辞 (同じアカウントに複数作る場合) | 空 |
-| `DashboardName` / `DataSetName` / `DataSourceName` | 表示名 | |
+| パラメータ | 必須 | 説明 | 既定値 |
+|---|---|---|---|
+| `QuickUserArn` | ○ | データソース・データセット・ダッシュボードの所有者にする Quick ユーザーの ARN | なし |
+| `IdentityRegion` | | Quick の ID リージョン | `ap-northeast-1` |
+| `DataSourceWorkGroup` | | クエリ結果の保存先を設定済みの Athena ワークグループ | `primary` |
+| `ResourceIdPrefixForAllResources` | | 同じアカウントに複数作るときのリソース ID の接頭辞 | 空 |
+| `DashboardName` / `DataSetName` / `DataSourceName` | | 表示名 | |
 
-スタック作成後、データセットの初回取り込みが走る。以降は毎日 17:06 (Asia/Tokyo) にフル更新する。
+スタックを作成すると、データセットの初回取り込みが自動で走る。以降は毎日 17:06 (Asia/Tokyo) にフル更新する。
+
+## ダッシュボードの中身
+
+- **全体サマリー**: 選択月の金額、最新月の金額 (前月比)、利用ユーザー数、合計トークン数、ユーザー別の金額 (モデル種別)、モデル別の金額 (トークン種別)、月次推移、日次推移、ユーザー × 月の表
+- **個人別**: ユーザーを 1 人選んで、金額・トークン数・使ったモデル数、モデル × トークン種別の表、日次推移 (モデル別)、モデル種別の構成比、月次推移
 
 ## 注意
 
 - 金額は定価ベース (unblended) の概算。Partner 経由の請求書の金額とは一致しない
 - 日付は UTC 基準
+- 個人別シートでは誰でも他のユーザーを選べる。本人の分だけ見せたい場合は行レベルセキュリティ (RLS) が別途必要
