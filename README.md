@@ -44,7 +44,6 @@ scripts/
 ### 3. Amazon Quick を準備する
 
 1. Amazon Quick (Enterprise) のアカウントを用意する
-   - 認証方式を IAM Identity Center にした場合、Quick に入れるのは Identity Center のアクセスポータル経由でサインインしたユーザーだけになる。IAM ユーザーやロールで AWS コンソールから開くと、管理画面の一部しか表示されない
 2. デプロイするリージョンで **SPICE 容量を購入**する (1 GB 程度)。容量が 0 だとデータセットの作成に失敗する
 3. アカウントを管理 → AWS リソース で次を許可する
    - Amazon Athena
