@@ -47,8 +47,9 @@ for r in res.values():
 res["DataSet"]["DependsOn"] = ["DataSource"]
 res["Dashboard"]["DependsOn"] = ["DataSet"]
 
-# CLI の --template-body は 51,200 バイトまでなので、インデント 1 で収める
-out = json.dumps(t, ensure_ascii=False, indent=1)
+# コンソールからアップロードすると日本語が文字化けするので、非 ASCII は \uXXXX でエスケープする。
+# CLI の --template-body は 51,200 バイトまでなので、インデント 1・区切りの空白なしで収める
+out = json.dumps(t, ensure_ascii=True, indent=1, separators=(",", ":"))
 assert len(out.encode()) < 51200, f"template too large for --template-body: {len(out.encode())} bytes"
 # 説明文の例に使っているダミーのアカウント ID (111122223333) は除外する
 leftover = [v for v in re.findall(r"AWSReservedSSO_[^\"/]*|ssouser\d+|\b\d{12}\b", out) if v != "111122223333"]
