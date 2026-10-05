@@ -1,0 +1,3 @@
+quick/definition.json
+*.parquet
+.DS_Store

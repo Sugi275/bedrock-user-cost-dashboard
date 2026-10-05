@@ -1,0 +1,1762 @@
+{
+ "AWSTemplateFormatVersion": "2010-09-09",
+ "Description": "Amazon Quick dashboard: Bedrock cost per IAM principal from CUR 2.0 (requires Athena table cur.cur2)",
+ "Parameters": {
+  "IdentityRegion": {
+   "Default": "ap-northeast-1",
+   "Description": "Quick identity region of this account",
+   "Type": "String"
+  },
+  "ResourceIdPrefixForAllResources": {
+   "Default": "",
+   "Description": "Resource id prefix for all resources",
+   "Type": "String"
+  },
+  "DashboardName": {
+   "Default": "Bedrock ユーザー別コスト",
+   "Description": "Name for dashboard:bedrock-user-cost",
+   "Type": "String"
+  },
+  "DataSourceName": {
+   "Default": "cur2-athena",
+   "Description": "Name for datasource:bedrock-cur2-athena",
+   "Type": "String"
+  },
+  "DataSourceWorkGroup": {
+   "Default": "primary",
+   "Description": "Athena workgroup that has a query result location",
+   "Type": "String"
+  },
+  "DataSetName": {
+   "Default": "bedrock-user-cost",
+   "Description": "Name for dataset:bedrock-user-cost-dataset",
+   "Type": "String"
+  },
+  "QuickUserArn": {
+   "Type": "String",
+   "Description": "ARN of the Quick user who owns the assets (e.g. arn:aws:quicksight:ap-northeast-1:111122223333:user/default/your-user)"
+  }
+ },
+ "Resources": {
+  "Dashboard": {
+   "Properties": {
+    "AwsAccountId": {
+     "Fn::Sub": "${AWS::AccountId}"
+    },
+    "DashboardId": {
+     "Fn::Sub": "${ResourceIdPrefixForAllResources}bedrock-user-cost"
+    },
+    "DashboardPublishOptions": {
+     "AdHocFilteringOption": {
+      "AvailabilityStatus": "ENABLED"
+     },
+     "DataPointDrillUpDownOption": {
+      "AvailabilityStatus": "ENABLED"
+     },
+     "DataPointMenuLabelOption": {
+      "AvailabilityStatus": "ENABLED"
+     },
+     "DataPointTooltipOption": {
+      "AvailabilityStatus": "ENABLED"
+     },
+     "DataQAEnabledOption": {
+      "AvailabilityStatus": "DISABLED"
+     },
+     "DataStoriesSharingOption": {
+      "AvailabilityStatus": "ENABLED"
+     },
+     "ExecutiveSummaryOption": {
+      "AvailabilityStatus": "ENABLED"
+     },
+     "ExportToCSVOption": {
+      "AvailabilityStatus": "ENABLED"
+     },
+     "ExportWithHiddenFieldsOption": {
+      "AvailabilityStatus": "DISABLED"
+     },
+     "SheetControlsOption": {
+      "VisibilityState": "EXPANDED"
+     },
+     "SheetLayoutElementMaximizationOption": {
+      "AvailabilityStatus": "ENABLED"
+     },
+     "VisualAxisSortOption": {
+      "AvailabilityStatus": "ENABLED"
+     },
+     "VisualMenuOption": {
+      "AvailabilityStatus": "ENABLED"
+     }
+    },
+    "Definition": {
+     "CalculatedFields": [
+      {
+       "DataSetIdentifier": "cost",
+       "Expression": "ifelse(locate(toLower({model_id}), 'fable') > 0, 'Fable', locate(toLower({model_id}), 'opus') > 0, 'Opus', locate(toLower({model_id}), 'sonnet') > 0, 'Sonnet', locate(toLower({model_id}), 'haiku') > 0, 'Haiku', locate(toLower({model_id}), 'kimi') > 0, 'Kimi', 'Other')",
+       "Name": "model_family"
+      },
+      {
+       "DataSetIdentifier": "cost",
+       "Expression": "concat(toString(extract('YYYY', {billing_month})), '-', ifelse(extract('MM', {billing_month}) < 10, concat('0', toString(extract('MM', {billing_month}))), toString(extract('MM', {billing_month}))))",
+       "Name": "month_label"
+      }
+     ],
+     "DataSetIdentifierDeclarations": [
+      {
+       "DataSetArn": {
+        "Fn::GetAtt": [
+         "DataSet",
+         "Arn"
+        ]
+       },
+       "Identifier": "cost"
+      }
+     ],
+     "FilterGroups": [
+      {
+       "CrossDataset": "SINGLE_DATASET",
+       "FilterGroupId": "fg-s1-month",
+       "Filters": [
+        {
+         "CategoryFilter": {
+          "Column": {
+           "ColumnName": "month_label",
+           "DataSetIdentifier": "cost"
+          },
+          "Configuration": {
+           "FilterListConfiguration": {
+            "MatchOperator": "CONTAINS",
+            "NullOption": "NON_NULLS_ONLY",
+            "SelectAllOptions": "FILTER_ALL_VALUES"
+           }
+          },
+          "FilterId": "f-s1-month"
+         }
+        }
+       ],
+       "ScopeConfiguration": {
+        "SelectedSheets": {
+         "SheetVisualScopingConfigurations": [
+          {
+           "Scope": "SELECTED_VISUALS",
+           "SheetId": "sheet-summary",
+           "VisualIds": [
+            "s1-kpi-cost",
+            "s1-kpi-users",
+            "s1-kpi-tokens",
+            "s1-bar-user",
+            "s1-bar-model",
+            "s1-line-daily"
+           ]
+          }
+         ]
+        }
+       },
+       "Status": "ENABLED"
+      },
+      {
+       "CrossDataset": "SINGLE_DATASET",
+       "FilterGroupId": "fg-s2-month",
+       "Filters": [
+        {
+         "CategoryFilter": {
+          "Column": {
+           "ColumnName": "month_label",
+           "DataSetIdentifier": "cost"
+          },
+          "Configuration": {
+           "FilterListConfiguration": {
+            "MatchOperator": "CONTAINS",
+            "NullOption": "NON_NULLS_ONLY",
+            "SelectAllOptions": "FILTER_ALL_VALUES"
+           }
+          },
+          "FilterId": "f-s2-month"
+         }
+        }
+       ],
+       "ScopeConfiguration": {
+        "SelectedSheets": {
+         "SheetVisualScopingConfigurations": [
+          {
+           "Scope": "SELECTED_VISUALS",
+           "SheetId": "sheet-user",
+           "VisualIds": [
+            "s2-kpi-cost",
+            "s2-kpi-tokens",
+            "s2-kpi-models",
+            "s2-pivot",
+            "s2-bar-daily",
+            "s2-donut"
+           ]
+          }
+         ]
+        }
+       },
+       "Status": "ENABLED"
+      },
+      {
+       "CrossDataset": "SINGLE_DATASET",
+       "FilterGroupId": "fg-s2-user",
+       "Filters": [
+        {
+         "CategoryFilter": {
+          "Column": {
+           "ColumnName": "user_name",
+           "DataSetIdentifier": "cost"
+          },
+          "Configuration": {
+           "FilterListConfiguration": {
+            "MatchOperator": "CONTAINS",
+            "NullOption": "NON_NULLS_ONLY",
+            "SelectAllOptions": "FILTER_ALL_VALUES"
+           }
+          },
+          "FilterId": "f-s2-user"
+         }
+        }
+       ],
+       "ScopeConfiguration": {
+        "SelectedSheets": {
+         "SheetVisualScopingConfigurations": [
+          {
+           "Scope": "ALL_VISUALS",
+           "SheetId": "sheet-user"
+          }
+         ]
+        }
+       },
+       "Status": "ENABLED"
+      }
+     ],
+     "ParameterDeclarations": [],
+     "Sheets": [
+      {
+       "ContentType": "INTERACTIVE",
+       "FilterControls": [
+        {
+         "Dropdown": {
+          "DisplayOptions": {
+           "SelectAllOptions": {
+            "Visibility": "VISIBLE"
+           }
+          },
+          "FilterControlId": "s1-ctl-month",
+          "SourceFilterId": "f-s1-month",
+          "Title": "請求月",
+          "Type": "SINGLE_SELECT"
+         }
+        }
+       ],
+       "Layouts": [
+        {
+         "Configuration": {
+          "GridLayout": {
+           "Elements": [
+            {
+             "ColumnSpan": 9,
+             "ElementId": "s1-kpi-cost",
+             "ElementType": "VISUAL",
+             "RowSpan": 5
+            },
+            {
+             "ColumnSpan": 9,
+             "ElementId": "s1-kpi-mom",
+             "ElementType": "VISUAL",
+             "RowSpan": 5
+            },
+            {
+             "ColumnSpan": 9,
+             "ElementId": "s1-kpi-users",
+             "ElementType": "VISUAL",
+             "RowSpan": 5
+            },
+            {
+             "ColumnSpan": 9,
+             "ElementId": "s1-kpi-tokens",
+             "ElementType": "VISUAL",
+             "RowSpan": 5
+            },
+            {
+             "ColumnSpan": 18,
+             "ElementId": "s1-bar-user",
+             "ElementType": "VISUAL",
+             "RowSpan": 10
+            },
+            {
+             "ColumnSpan": 18,
+             "ElementId": "s1-bar-model",
+             "ElementType": "VISUAL",
+             "RowSpan": 10
+            },
+            {
+             "ColumnSpan": 18,
+             "ElementId": "s1-bar-month",
+             "ElementType": "VISUAL",
+             "RowSpan": 10
+            },
+            {
+             "ColumnSpan": 18,
+             "ElementId": "s1-line-daily",
+             "ElementType": "VISUAL",
+             "RowSpan": 10
+            },
+            {
+             "ColumnSpan": 36,
+             "ElementId": "s1-pivot",
+             "ElementType": "VISUAL",
+             "RowSpan": 10
+            },
+            {
+             "ColumnSpan": 36,
+             "ElementId": "s1-note",
+             "ElementType": "TEXT_BOX",
+             "RowSpan": 2
+            }
+           ]
+          }
+         }
+        }
+       ],
+       "Name": "全体サマリー",
+       "SheetControlLayouts": [
+        {
+         "Configuration": {
+          "GridLayout": {
+           "Elements": [
+            {
+             "ColumnSpan": 3,
+             "ElementId": "s1-ctl-month",
+             "ElementType": "FILTER_CONTROL",
+             "RowSpan": 1
+            }
+           ]
+          }
+         }
+        }
+       ],
+       "SheetId": "sheet-summary",
+       "TextBoxes": [
+        {
+         "Content": "<text-box>金額は定価ベース (unblended) の概算です。Partner 経由の請求書の金額とは一致しません。日付は UTC 基準です。CUR は 1 日 1 回程度の配信のため、当日分は翌日以降に反映されます。</text-box>",
+         "SheetTextBoxId": "s1-note"
+        }
+       ],
+       "Visuals": [
+        {
+         "KPIVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldWells": {
+            "TargetValues": [],
+            "TrendGroups": [],
+            "Values": [
+             {
+              "NumericalMeasureField": {
+               "AggregationFunction": {
+                "SimpleNumericalAggregation": "SUM"
+               },
+               "Column": {
+                "ColumnName": "cost_usd",
+                "DataSetIdentifier": "cost"
+               },
+               "FieldId": "s1kc",
+               "FormatConfiguration": {
+                "FormatConfiguration": {
+                 "CurrencyDisplayFormatConfiguration": {
+                  "DecimalPlacesConfiguration": {
+                   "DecimalPlaces": 2
+                  },
+                  "Symbol": "USD"
+                 }
+                }
+               }
+              }
+             }
+            ]
+           },
+           "SortConfiguration": {}
+          },
+          "ColumnHierarchies": [],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "選択月の金額"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s1-kpi-cost"
+         }
+        },
+        {
+         "KPIVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldWells": {
+            "TargetValues": [],
+            "TrendGroups": [
+             {
+              "DateDimensionField": {
+               "Column": {
+                "ColumnName": "billing_month",
+                "DataSetIdentifier": "cost"
+               },
+               "DateGranularity": "MONTH",
+               "FieldId": "s1km_m",
+               "HierarchyId": "s1km_m"
+              }
+             }
+            ],
+            "Values": [
+             {
+              "NumericalMeasureField": {
+               "AggregationFunction": {
+                "SimpleNumericalAggregation": "SUM"
+               },
+               "Column": {
+                "ColumnName": "cost_usd",
+                "DataSetIdentifier": "cost"
+               },
+               "FieldId": "s1km",
+               "FormatConfiguration": {
+                "FormatConfiguration": {
+                 "CurrencyDisplayFormatConfiguration": {
+                  "DecimalPlacesConfiguration": {
+                   "DecimalPlaces": 2
+                  },
+                  "Symbol": "USD"
+                 }
+                }
+               }
+              }
+             }
+            ]
+           },
+           "KPIOptions": {
+            "Comparison": {
+             "ComparisonMethod": "PERCENT_DIFFERENCE"
+            },
+            "PrimaryValueDisplayType": "ACTUAL"
+           },
+           "SortConfiguration": {}
+          },
+          "ColumnHierarchies": [
+           {
+            "DateTimeHierarchy": {
+             "HierarchyId": "s1km_m"
+            }
+           }
+          ],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "最新月の金額 (前月比)"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s1-kpi-mom"
+         }
+        },
+        {
+         "KPIVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldWells": {
+            "TargetValues": [],
+            "TrendGroups": [],
+            "Values": [
+             {
+              "CategoricalMeasureField": {
+               "AggregationFunction": "DISTINCT_COUNT",
+               "Column": {
+                "ColumnName": "user_name",
+                "DataSetIdentifier": "cost"
+               },
+               "FieldId": "s1ku"
+              }
+             }
+            ]
+           },
+           "SortConfiguration": {}
+          },
+          "ColumnHierarchies": [],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "利用ユーザー数"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s1-kpi-users"
+         }
+        },
+        {
+         "KPIVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldWells": {
+            "TargetValues": [],
+            "TrendGroups": [],
+            "Values": [
+             {
+              "NumericalMeasureField": {
+               "AggregationFunction": {
+                "SimpleNumericalAggregation": "SUM"
+               },
+               "Column": {
+                "ColumnName": "tokens",
+                "DataSetIdentifier": "cost"
+               },
+               "FieldId": "s1kt"
+              }
+             }
+            ]
+           },
+           "SortConfiguration": {}
+          },
+          "ColumnHierarchies": [],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "合計トークン数"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s1-kpi-tokens"
+         }
+        },
+        {
+         "BarChartVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "BarsArrangement": "STACKED",
+           "FieldWells": {
+            "BarChartAggregatedFieldWells": {
+             "Category": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "user_name",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1bu_u"
+               }
+              }
+             ],
+             "Colors": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "model_family",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1bu_f"
+               }
+              }
+             ],
+             "Values": [
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "cost_usd",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1bu_c",
+                "FormatConfiguration": {
+                 "FormatConfiguration": {
+                  "CurrencyDisplayFormatConfiguration": {
+                   "DecimalPlacesConfiguration": {
+                    "DecimalPlaces": 2
+                   },
+                   "Symbol": "USD"
+                  }
+                 }
+                }
+               }
+              }
+             ]
+            }
+           },
+           "Orientation": "HORIZONTAL",
+           "SortConfiguration": {
+            "CategorySort": [
+             {
+              "FieldSort": {
+               "Direction": "DESC",
+               "FieldId": "s1bu_c"
+              }
+             }
+            ]
+           }
+          },
+          "ColumnHierarchies": [],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "ユーザー別の金額 (モデル種別)"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s1-bar-user"
+         }
+        },
+        {
+         "BarChartVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "BarsArrangement": "STACKED",
+           "FieldWells": {
+            "BarChartAggregatedFieldWells": {
+             "Category": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "model_id",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1bm_m"
+               }
+              }
+             ],
+             "Colors": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "token_kind",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1bm_k"
+               }
+              }
+             ],
+             "Values": [
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "cost_usd",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1bm_c",
+                "FormatConfiguration": {
+                 "FormatConfiguration": {
+                  "CurrencyDisplayFormatConfiguration": {
+                   "DecimalPlacesConfiguration": {
+                    "DecimalPlaces": 2
+                   },
+                   "Symbol": "USD"
+                  }
+                 }
+                }
+               }
+              }
+             ]
+            }
+           },
+           "Orientation": "HORIZONTAL",
+           "SortConfiguration": {
+            "CategorySort": [
+             {
+              "FieldSort": {
+               "Direction": "DESC",
+               "FieldId": "s1bm_c"
+              }
+             }
+            ]
+           }
+          },
+          "ColumnHierarchies": [],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "モデル別の金額 (トークン種別)"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s1-bar-model"
+         }
+        },
+        {
+         "BarChartVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "BarsArrangement": "STACKED",
+           "FieldWells": {
+            "BarChartAggregatedFieldWells": {
+             "Category": [
+              {
+               "DateDimensionField": {
+                "Column": {
+                 "ColumnName": "billing_month",
+                 "DataSetIdentifier": "cost"
+                },
+                "DateGranularity": "MONTH",
+                "FieldId": "s1mo_m",
+                "HierarchyId": "s1mo_m"
+               }
+              }
+             ],
+             "Colors": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "user_name",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1mo_u"
+               }
+              }
+             ],
+             "Values": [
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "cost_usd",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1mo_c",
+                "FormatConfiguration": {
+                 "FormatConfiguration": {
+                  "CurrencyDisplayFormatConfiguration": {
+                   "DecimalPlacesConfiguration": {
+                    "DecimalPlaces": 2
+                   },
+                   "Symbol": "USD"
+                  }
+                 }
+                }
+               }
+              }
+             ]
+            }
+           },
+           "Orientation": "VERTICAL",
+           "SortConfiguration": {
+            "CategorySort": [
+             {
+              "FieldSort": {
+               "Direction": "ASC",
+               "FieldId": "s1mo_m"
+              }
+             }
+            ]
+           }
+          },
+          "ColumnHierarchies": [
+           {
+            "DateTimeHierarchy": {
+             "HierarchyId": "s1mo_m"
+            }
+           }
+          ],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "月次推移 (ユーザー別)"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s1-bar-month"
+         }
+        },
+        {
+         "LineChartVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldWells": {
+            "LineChartAggregatedFieldWells": {
+             "Category": [
+              {
+               "DateDimensionField": {
+                "Column": {
+                 "ColumnName": "usage_date",
+                 "DataSetIdentifier": "cost"
+                },
+                "DateGranularity": "DAY",
+                "FieldId": "s1ld_d",
+                "HierarchyId": "s1ld_d"
+               }
+              }
+             ],
+             "Colors": [],
+             "Values": [
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "cost_usd",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1ld_c",
+                "FormatConfiguration": {
+                 "FormatConfiguration": {
+                  "CurrencyDisplayFormatConfiguration": {
+                   "DecimalPlacesConfiguration": {
+                    "DecimalPlaces": 2
+                   },
+                   "Symbol": "USD"
+                  }
+                 }
+                }
+               }
+              }
+             ]
+            }
+           },
+           "SortConfiguration": {},
+           "Type": "LINE"
+          },
+          "ColumnHierarchies": [
+           {
+            "DateTimeHierarchy": {
+             "HierarchyId": "s1ld_d"
+            }
+           }
+          ],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "日次推移 (全体)"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s1-line-daily"
+         }
+        },
+        {
+         "PivotTableVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldOptions": {
+            "SelectedFieldOptions": [
+             {
+              "FieldId": "s1pv_u",
+              "Visibility": "VISIBLE"
+             },
+             {
+              "FieldId": "s1pv_m",
+              "Visibility": "VISIBLE"
+             },
+             {
+              "FieldId": "s1pv_c",
+              "Visibility": "VISIBLE"
+             }
+            ]
+           },
+           "FieldWells": {
+            "PivotTableAggregatedFieldWells": {
+             "Columns": [
+              {
+               "DateDimensionField": {
+                "Column": {
+                 "ColumnName": "billing_month",
+                 "DataSetIdentifier": "cost"
+                },
+                "DateGranularity": "MONTH",
+                "FieldId": "s1pv_m"
+               }
+              }
+             ],
+             "Rows": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "user_name",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1pv_u"
+               }
+              }
+             ],
+             "Values": [
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "cost_usd",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s1pv_c",
+                "FormatConfiguration": {
+                 "FormatConfiguration": {
+                  "CurrencyDisplayFormatConfiguration": {
+                   "DecimalPlacesConfiguration": {
+                    "DecimalPlaces": 2
+                   },
+                   "Symbol": "USD"
+                  }
+                 }
+                }
+               }
+              }
+             ]
+            }
+           },
+           "SortConfiguration": {
+            "FieldSortOptions": []
+           },
+           "TableOptions": {
+            "CellStyle": {},
+            "ColumnHeaderStyle": {},
+            "RowFieldNamesStyle": {}
+           }
+          },
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "ユーザー × 月"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s1-pivot"
+         }
+        }
+       ]
+      },
+      {
+       "ContentType": "INTERACTIVE",
+       "FilterControls": [
+        {
+         "Dropdown": {
+          "DisplayOptions": {
+           "SelectAllOptions": {
+            "Visibility": "VISIBLE"
+           }
+          },
+          "FilterControlId": "s2-ctl-user",
+          "SourceFilterId": "f-s2-user",
+          "Title": "ユーザー",
+          "Type": "SINGLE_SELECT"
+         }
+        },
+        {
+         "Dropdown": {
+          "DisplayOptions": {
+           "SelectAllOptions": {
+            "Visibility": "VISIBLE"
+           }
+          },
+          "FilterControlId": "s2-ctl-month",
+          "SourceFilterId": "f-s2-month",
+          "Title": "請求月",
+          "Type": "SINGLE_SELECT"
+         }
+        }
+       ],
+       "Layouts": [
+        {
+         "Configuration": {
+          "GridLayout": {
+           "Elements": [
+            {
+             "ColumnSpan": 12,
+             "ElementId": "s2-kpi-cost",
+             "ElementType": "VISUAL",
+             "RowSpan": 5
+            },
+            {
+             "ColumnSpan": 12,
+             "ElementId": "s2-kpi-tokens",
+             "ElementType": "VISUAL",
+             "RowSpan": 5
+            },
+            {
+             "ColumnSpan": 12,
+             "ElementId": "s2-kpi-models",
+             "ElementType": "VISUAL",
+             "RowSpan": 5
+            },
+            {
+             "ColumnSpan": 36,
+             "ElementId": "s2-pivot",
+             "ElementType": "VISUAL",
+             "RowSpan": 10
+            },
+            {
+             "ColumnSpan": 24,
+             "ElementId": "s2-bar-daily",
+             "ElementType": "VISUAL",
+             "RowSpan": 10
+            },
+            {
+             "ColumnSpan": 12,
+             "ElementId": "s2-donut",
+             "ElementType": "VISUAL",
+             "RowSpan": 10
+            },
+            {
+             "ColumnSpan": 36,
+             "ElementId": "s2-bar-month",
+             "ElementType": "VISUAL",
+             "RowSpan": 8
+            },
+            {
+             "ColumnSpan": 36,
+             "ElementId": "s2-note",
+             "ElementType": "TEXT_BOX",
+             "RowSpan": 2
+            }
+           ]
+          }
+         }
+        }
+       ],
+       "Name": "個人別",
+       "SheetControlLayouts": [
+        {
+         "Configuration": {
+          "GridLayout": {
+           "Elements": [
+            {
+             "ColumnSpan": 3,
+             "ElementId": "s2-ctl-user",
+             "ElementType": "FILTER_CONTROL",
+             "RowSpan": 1
+            },
+            {
+             "ColumnSpan": 3,
+             "ElementId": "s2-ctl-month",
+             "ElementType": "FILTER_CONTROL",
+             "RowSpan": 1
+            }
+           ]
+          }
+         }
+        }
+       ],
+       "SheetId": "sheet-user",
+       "TextBoxes": [
+        {
+         "Content": "<text-box>金額は定価ベース (unblended) の概算です。Partner 経由の請求書の金額とは一致しません。日付は UTC 基準です。CUR は 1 日 1 回程度の配信のため、当日分は翌日以降に反映されます。</text-box>",
+         "SheetTextBoxId": "s2-note"
+        }
+       ],
+       "Visuals": [
+        {
+         "KPIVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldWells": {
+            "TargetValues": [],
+            "TrendGroups": [],
+            "Values": [
+             {
+              "NumericalMeasureField": {
+               "AggregationFunction": {
+                "SimpleNumericalAggregation": "SUM"
+               },
+               "Column": {
+                "ColumnName": "cost_usd",
+                "DataSetIdentifier": "cost"
+               },
+               "FieldId": "s2kc",
+               "FormatConfiguration": {
+                "FormatConfiguration": {
+                 "CurrencyDisplayFormatConfiguration": {
+                  "DecimalPlacesConfiguration": {
+                   "DecimalPlaces": 2
+                  },
+                  "Symbol": "USD"
+                 }
+                }
+               }
+              }
+             }
+            ]
+           },
+           "SortConfiguration": {}
+          },
+          "ColumnHierarchies": [],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "金額"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s2-kpi-cost"
+         }
+        },
+        {
+         "KPIVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldWells": {
+            "TargetValues": [],
+            "TrendGroups": [],
+            "Values": [
+             {
+              "NumericalMeasureField": {
+               "AggregationFunction": {
+                "SimpleNumericalAggregation": "SUM"
+               },
+               "Column": {
+                "ColumnName": "tokens",
+                "DataSetIdentifier": "cost"
+               },
+               "FieldId": "s2kt"
+              }
+             }
+            ]
+           },
+           "SortConfiguration": {}
+          },
+          "ColumnHierarchies": [],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "トークン数"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s2-kpi-tokens"
+         }
+        },
+        {
+         "KPIVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldWells": {
+            "TargetValues": [],
+            "TrendGroups": [],
+            "Values": [
+             {
+              "CategoricalMeasureField": {
+               "AggregationFunction": "DISTINCT_COUNT",
+               "Column": {
+                "ColumnName": "model_id",
+                "DataSetIdentifier": "cost"
+               },
+               "FieldId": "s2km"
+              }
+             }
+            ]
+           },
+           "SortConfiguration": {}
+          },
+          "ColumnHierarchies": [],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "使ったモデル数"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s2-kpi-models"
+         }
+        },
+        {
+         "PivotTableVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "FieldOptions": {
+            "SelectedFieldOptions": [
+             {
+              "FieldId": "s2pv_m",
+              "Visibility": "VISIBLE"
+             },
+             {
+              "FieldId": "s2pv_k",
+              "Visibility": "VISIBLE"
+             },
+             {
+              "FieldId": "s2pv_c",
+              "Visibility": "VISIBLE"
+             },
+             {
+              "FieldId": "s2pv_t",
+              "Visibility": "VISIBLE"
+             }
+            ]
+           },
+           "FieldWells": {
+            "PivotTableAggregatedFieldWells": {
+             "Columns": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "token_kind",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s2pv_k"
+               }
+              }
+             ],
+             "Rows": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "model_id",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s2pv_m"
+               }
+              }
+             ],
+             "Values": [
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "cost_usd",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s2pv_c",
+                "FormatConfiguration": {
+                 "FormatConfiguration": {
+                  "CurrencyDisplayFormatConfiguration": {
+                   "DecimalPlacesConfiguration": {
+                    "DecimalPlaces": 2
+                   },
+                   "Symbol": "USD"
+                  }
+                 }
+                }
+               }
+              },
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "tokens",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s2pv_t"
+               }
+              }
+             ]
+            }
+           },
+           "SortConfiguration": {
+            "FieldSortOptions": []
+           },
+           "TableOptions": {
+            "CellStyle": {},
+            "ColumnHeaderStyle": {},
+            "RowFieldNamesStyle": {}
+           }
+          },
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "モデル × トークン種別"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s2-pivot"
+         }
+        },
+        {
+         "BarChartVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "BarsArrangement": "STACKED",
+           "FieldWells": {
+            "BarChartAggregatedFieldWells": {
+             "Category": [
+              {
+               "DateDimensionField": {
+                "Column": {
+                 "ColumnName": "usage_date",
+                 "DataSetIdentifier": "cost"
+                },
+                "DateGranularity": "DAY",
+                "FieldId": "s2bd_d",
+                "HierarchyId": "s2bd_d"
+               }
+              }
+             ],
+             "Colors": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "model_id",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s2bd_m"
+               }
+              }
+             ],
+             "Values": [
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "cost_usd",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s2bd_c",
+                "FormatConfiguration": {
+                 "FormatConfiguration": {
+                  "CurrencyDisplayFormatConfiguration": {
+                   "DecimalPlacesConfiguration": {
+                    "DecimalPlaces": 2
+                   },
+                   "Symbol": "USD"
+                  }
+                 }
+                }
+               }
+              }
+             ]
+            }
+           },
+           "Orientation": "VERTICAL",
+           "SortConfiguration": {
+            "CategorySort": [
+             {
+              "FieldSort": {
+               "Direction": "ASC",
+               "FieldId": "s2bd_d"
+              }
+             }
+            ]
+           }
+          },
+          "ColumnHierarchies": [
+           {
+            "DateTimeHierarchy": {
+             "HierarchyId": "s2bd_d"
+            }
+           }
+          ],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "日次推移 (モデル別)"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s2-bar-daily"
+         }
+        },
+        {
+         "PieChartVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "DonutOptions": {
+            "ArcOptions": {
+             "ArcThickness": "MEDIUM"
+            }
+           },
+           "FieldWells": {
+            "PieChartAggregatedFieldWells": {
+             "Category": [
+              {
+               "CategoricalDimensionField": {
+                "Column": {
+                 "ColumnName": "model_family",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s2dn_f"
+               }
+              }
+             ],
+             "Values": [
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "cost_usd",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s2dn_c",
+                "FormatConfiguration": {
+                 "FormatConfiguration": {
+                  "CurrencyDisplayFormatConfiguration": {
+                   "DecimalPlacesConfiguration": {
+                    "DecimalPlaces": 2
+                   },
+                   "Symbol": "USD"
+                  }
+                 }
+                }
+               }
+              }
+             ]
+            }
+           },
+           "SortConfiguration": {}
+          },
+          "ColumnHierarchies": [],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "モデル種別の構成比 (金額)"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s2-donut"
+         }
+        },
+        {
+         "BarChartVisual": {
+          "Actions": [],
+          "ChartConfiguration": {
+           "BarsArrangement": "CLUSTERED",
+           "FieldWells": {
+            "BarChartAggregatedFieldWells": {
+             "Category": [
+              {
+               "DateDimensionField": {
+                "Column": {
+                 "ColumnName": "billing_month",
+                 "DataSetIdentifier": "cost"
+                },
+                "DateGranularity": "MONTH",
+                "FieldId": "s2mo_m",
+                "HierarchyId": "s2mo_m"
+               }
+              }
+             ],
+             "Colors": [],
+             "Values": [
+              {
+               "NumericalMeasureField": {
+                "AggregationFunction": {
+                 "SimpleNumericalAggregation": "SUM"
+                },
+                "Column": {
+                 "ColumnName": "cost_usd",
+                 "DataSetIdentifier": "cost"
+                },
+                "FieldId": "s2mo_c",
+                "FormatConfiguration": {
+                 "FormatConfiguration": {
+                  "CurrencyDisplayFormatConfiguration": {
+                   "DecimalPlacesConfiguration": {
+                    "DecimalPlaces": 2
+                   },
+                   "Symbol": "USD"
+                  }
+                 }
+                }
+               }
+              }
+             ]
+            }
+           },
+           "Orientation": "VERTICAL",
+           "SortConfiguration": {
+            "CategorySort": [
+             {
+              "FieldSort": {
+               "Direction": "ASC",
+               "FieldId": "s2mo_m"
+              }
+             }
+            ]
+           }
+          },
+          "ColumnHierarchies": [
+           {
+            "DateTimeHierarchy": {
+             "HierarchyId": "s2mo_m"
+            }
+           }
+          ],
+          "Subtitle": {
+           "Visibility": "VISIBLE"
+          },
+          "Title": {
+           "FormatText": {
+            "PlainText": "月次推移"
+           },
+           "Visibility": "VISIBLE"
+          },
+          "VisualId": "s2-bar-month"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    "Name": {
+     "Fn::Sub": "${DashboardName}"
+    },
+    "Permissions": [
+     {
+      "Actions": [
+       "quicksight:DescribeDashboard",
+       "quicksight:ListDashboardVersions",
+       "quicksight:UpdateDashboardPermissions",
+       "quicksight:QueryDashboard",
+       "quicksight:UpdateDashboard",
+       "quicksight:DeleteDashboard",
+       "quicksight:DescribeDashboardPermissions",
+       "quicksight:UpdateDashboardPublishedVersion"
+      ],
+      "Principal": {
+       "Ref": "QuickUserArn"
+      }
+     }
+    ],
+    "ValidationStrategy": {
+     "Mode": "LENIENT"
+    }
+   },
+   "Type": "AWS::QuickSight::Dashboard",
+   "DependsOn": [
+    "DataSet"
+   ]
+  },
+  "DataSource": {
+   "Properties": {
+    "AwsAccountId": {
+     "Fn::Sub": "${AWS::AccountId}"
+    },
+    "DataSourceId": {
+     "Fn::Sub": "${ResourceIdPrefixForAllResources}bedrock-cur2-athena"
+    },
+    "DataSourceParameters": {
+     "AthenaParameters": {
+      "WorkGroup": {
+       "Fn::Sub": "${DataSourceWorkGroup}"
+      }
+     }
+    },
+    "Name": {
+     "Fn::Sub": "${DataSourceName}"
+    },
+    "Permissions": [
+     {
+      "Actions": [
+       "quicksight:PassDataSource",
+       "quicksight:DescribeDataSourcePermissions",
+       "quicksight:UpdateDataSource",
+       "quicksight:UpdateDataSourcePermissions",
+       "quicksight:DescribeDataSource",
+       "quicksight:DeleteDataSource"
+      ],
+      "Principal": {
+       "Ref": "QuickUserArn"
+      }
+     }
+    ],
+    "SslProperties": {
+     "DisableSsl": false
+    },
+    "Type": "ATHENA"
+   },
+   "Type": "AWS::QuickSight::DataSource"
+  },
+  "RefreshSchedule": {
+   "DependsOn": [
+    "DataSet"
+   ],
+   "Properties": {
+    "AwsAccountId": {
+     "Fn::Sub": "${AWS::AccountId}"
+    },
+    "DataSetId": {
+     "Fn::Sub": "${ResourceIdPrefixForAllResources}bedrock-user-cost-dataset"
+    },
+    "Schedule": {
+     "RefreshType": "FULL_REFRESH",
+     "ScheduleFrequency": {
+      "Interval": "DAILY",
+      "TimeOfTheDay": "17:06",
+      "TimeZone": "Asia/Tokyo"
+     },
+     "ScheduleId": "daily-refresh"
+    }
+   },
+   "Type": "AWS::QuickSight::RefreshSchedule"
+  },
+  "DataSet": {
+   "Properties": {
+    "AwsAccountId": {
+     "Fn::Sub": "${AWS::AccountId}"
+    },
+    "DataPrepConfiguration": {
+     "DestinationTableMap": {
+      "b913dc83-8542-49e4-97e8-0a3f11a60b33": {
+       "Alias": "Destination Table 1",
+       "Source": {
+        "TransformOperationId": "c56b4e93-8cd2-47bf-9285-181262ab5517"
+       }
+      }
+     },
+     "SourceTableMap": {
+      "c2224dab-1cb8-4715-8e5b-b0ed24f4ce2a": {
+       "PhysicalTableId": "1cd7e7ae-0849-4c65-949c-7569444e309c"
+      }
+     },
+     "TransformStepMap": {
+      "c56b4e93-8cd2-47bf-9285-181262ab5517": {
+       "ImportTableStep": {
+        "Alias": "bedrock-user-cost",
+        "Source": {
+         "SourceTableId": "c2224dab-1cb8-4715-8e5b-b0ed24f4ce2a"
+        }
+       }
+      }
+     }
+    },
+    "DataSetId": {
+     "Fn::Sub": "${ResourceIdPrefixForAllResources}bedrock-user-cost-dataset"
+    },
+    "DataSetRefreshProperties": {
+     "FailureConfiguration": {
+      "EmailAlert": {
+       "AlertStatus": "DISABLED"
+      }
+     }
+    },
+    "ImportMode": "SPICE",
+    "Name": {
+     "Fn::Sub": "${DataSetName}"
+    },
+    "Permissions": [
+     {
+      "Actions": [
+       "quicksight:DeleteDataSet",
+       "quicksight:UpdateDataSetPermissions",
+       "quicksight:PutDataSetRefreshProperties",
+       "quicksight:CreateRefreshSchedule",
+       "quicksight:CancelIngestion",
+       "quicksight:ListRefreshSchedules",
+       "quicksight:PassDataSet",
+       "quicksight:UpdateRefreshSchedule",
+       "quicksight:DeleteRefreshSchedule",
+       "quicksight:DescribeDataSetRefreshProperties",
+       "quicksight:DescribeDataSet",
+       "quicksight:CreateIngestion",
+       "quicksight:DescribeRefreshSchedule",
+       "quicksight:ListIngestions",
+       "quicksight:DescribeDataSetPermissions",
+       "quicksight:UpdateDataSet",
+       "quicksight:DeleteDataSetRefreshProperties",
+       "quicksight:DescribeIngestion"
+      ],
+      "Principal": {
+       "Ref": "QuickUserArn"
+      }
+     }
+    ],
+    "PhysicalTableMap": {
+     "1cd7e7ae-0849-4c65-949c-7569444e309c": {
+      "CustomSql": {
+       "Columns": [
+        {
+         "Id": "new_custo-billing_m-be111c",
+         "Name": "billing_month",
+         "Type": "DATETIME"
+        },
+        {
+         "Id": "new_custo-usage_dat-f45846",
+         "Name": "usage_date",
+         "Type": "DATETIME"
+        },
+        {
+         "Id": "new_custo-user_name-586914",
+         "Name": "user_name",
+         "Type": "STRING"
+        },
+        {
+         "Id": "new_custo-role_name-066cb6",
+         "Name": "role_name",
+         "Type": "STRING"
+        },
+        {
+         "Id": "new_custo-model_id-8e32e2",
+         "Name": "model_id",
+         "Type": "STRING"
+        },
+        {
+         "Id": "new_custo-token_kin-71232d",
+         "Name": "token_kind",
+         "Type": "STRING"
+        },
+        {
+         "Id": "new_custo-tokens-857680",
+         "Name": "tokens",
+         "SubType": "FLOAT",
+         "Type": "DECIMAL"
+        },
+        {
+         "Id": "new_custo-cost_usd-e2a303",
+         "Name": "cost_usd",
+         "SubType": "FLOAT",
+         "Type": "DECIMAL"
+        }
+       ],
+       "DataSourceArn": {
+        "Fn::GetAtt": [
+         "DataSource",
+         "Arn"
+        ]
+       },
+       "Name": "New custom SQL",
+       "SqlQuery": "SELECT\n  date_parse(billing_period, '%Y-%m')                     AS billing_month,\n  CAST(line_item_usage_start_date AS date)                AS usage_date,\n  regexp_extract(line_item_iam_principal, '[^/]+$')       AS user_name,\n  regexp_extract(line_item_iam_principal, 'assumed-role/([^/]+)/', 1) AS role_name,\n  regexp_extract(line_item_resource_id, '[^/]+$')         AS model_id,\n  CASE\n    WHEN regexp_replace(lower(line_item_usage_type), '[-_]', '') LIKE '%cacheread%'  THEN 'cache_read'\n    WHEN regexp_replace(lower(line_item_usage_type), '[-_]', '') LIKE '%cachewrite%' THEN 'cache_write'\n    WHEN lower(line_item_usage_type) LIKE '%input%'  THEN 'input'\n    WHEN lower(line_item_usage_type) LIKE '%output%' THEN 'output'\n    ELSE 'other'\n  END                                                     AS token_kind,\n  sum(line_item_usage_amount * CASE pricing_unit\n        WHEN '1M tokens' THEN 1000000\n        WHEN '1K tokens' THEN 1000\n        ELSE 1 END)                                       AS tokens,\n  sum(line_item_unblended_cost)                           AS cost_usd\nFROM cur.cur2\nWHERE line_item_iam_principal IS NOT NULL\n  AND line_item_iam_principal <> ''\n  AND line_item_line_item_type = 'Usage'\nGROUP BY 1, 2, 3, 4, 5, 6"
+      }
+     }
+    },
+    "SemanticModelConfiguration": {
+     "SemanticMetadata": [
+      {}
+     ],
+     "TableMap": {
+      "fb36b96d-29ec-4ad1-9a9d-24008610b955": {
+       "Alias": "Semantic Table 1",
+       "DestinationTableId": "b913dc83-8542-49e4-97e8-0a3f11a60b33"
+      }
+     }
+    }
+   },
+   "Type": "AWS::QuickSight::DataSet",
+   "DependsOn": [
+    "DataSource"
+   ]
+  }
+ }
+}
