@@ -74,7 +74,8 @@ aws cloudformation deploy \
 | `IdentityRegion` | | Quick の ID リージョン | `ap-northeast-1` |
 | `DataSourceWorkGroup` | | クエリ結果の保存先を設定済みの Athena ワークグループ | `primary` |
 | `ResourceIdPrefixForAllResources` | | 同じアカウントに複数作るときのリソース ID の接頭辞 | 空 |
-| `DashboardName` / `DataSetName` / `DataSourceName` | | 表示名 | |
+
+表示名 (ダッシュボード「Bedrock ユーザー別コスト」など) はパラメータにせず、テンプレートに直接書いている。CloudFormation のコンソールはパラメータの既定値を取得するときに日本語を `?` に置き換えてしまうため。名前を変えたい場合は、作成後に Quick の画面で変更する。
 
 スタックを作成すると、データセットの初回取り込みが自動で走る (1〜2 分)。以降は毎日 17:06 (Asia/Tokyo) にフル更新する。取り込みの結果は次で確認できる。
 

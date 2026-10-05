@@ -41,15 +41,19 @@ params["QuickUserArn"] = {
 params["IdentityRegion"]["Description"] = "Quick identity region of this account"
 
 res = t["Resources"]
+
+# コンソールはパラメータを GetTemplateSummary で取得するが、この API は非 ASCII 文字を "?" にして返す。
+# 日本語の既定値がそのまま化けて使われるので、表示名はパラメータにせずリソースに直接書く
+for logical_id, param in [("Dashboard", "DashboardName"), ("DataSet", "DataSetName"), ("DataSource", "DataSourceName")]:
+    res[logical_id]["Properties"]["Name"] = params.pop(param)["Default"]
 for r in res.values():
     for perm in r["Properties"].get("Permissions", []):
         perm["Principal"] = {"Ref": "QuickUserArn"}
 res["DataSet"]["DependsOn"] = ["DataSource"]
 res["Dashboard"]["DependsOn"] = ["DataSet"]
 
-# コンソールからアップロードすると日本語が文字化けするので、非 ASCII は \uXXXX でエスケープする。
-# CLI の --template-body は 51,200 バイトまでなので、インデント 1・区切りの空白なしで収める
-out = json.dumps(t, ensure_ascii=True, indent=1, separators=(",", ":"))
+# CLI の --template-body は 51,200 バイトまでなので、インデント 1 で収める
+out = json.dumps(t, ensure_ascii=False, indent=1)
 assert len(out.encode()) < 51200, f"template too large for --template-body: {len(out.encode())} bytes"
 # 説明文の例に使っているダミーのアカウント ID (111122223333) は除外する
 leftover = [v for v in re.findall(r"AWSReservedSSO_[^\"/]*|ssouser\d+|\b\d{12}\b", out) if v != "111122223333"]
