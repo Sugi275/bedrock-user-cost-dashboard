@@ -44,6 +44,7 @@ scripts/
 ### 3. Amazon Quick を準備する
 
 1. Amazon Quick (Enterprise) のアカウントを用意する
+   - 認証方式を IAM Identity Center にした場合、Quick に入れるのは Identity Center のアクセスポータル経由でサインインしたユーザーだけになる。IAM ユーザーやロールで AWS コンソールから開くと、管理画面の一部しか表示されない
 2. デプロイするリージョンで **SPICE 容量を購入**する (1 GB 程度)。容量が 0 だとデータセットの作成に失敗する
 3. アカウントを管理 → AWS リソース で次を許可する
    - Amazon Athena
@@ -76,7 +77,13 @@ aws cloudformation deploy \
 | `ResourceIdPrefixForAllResources` | | 同じアカウントに複数作るときのリソース ID の接頭辞 | 空 |
 | `DashboardName` / `DataSetName` / `DataSourceName` | | 表示名 | |
 
-スタックを作成すると、データセットの初回取り込みが自動で走る。以降は毎日 17:06 (Asia/Tokyo) にフル更新する。
+スタックを作成すると、データセットの初回取り込みが自動で走る (1〜2 分)。以降は毎日 17:06 (Asia/Tokyo) にフル更新する。取り込みの結果は次で確認できる。
+
+```sh
+aws quicksight list-ingestions --aws-account-id <アカウント ID> --region <リージョン> \
+  --data-set-id bedrock-user-cost-dataset \
+  --query 'Ingestions[0].[IngestionStatus,RowInfo.RowsIngested,ErrorInfo.Message]' --output text
+```
 
 ## ダッシュボードの中身
 
